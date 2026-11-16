@@ -20,7 +20,8 @@ log = "0.4"
 
 # Pinned dev revisions. Rune is pre-release; bump deliberately.
 jagua-rs = { git = "https://github.com/JeroenGar/jagua-rs", rev = "13a0dfbde60713458fbb524f8c043f04631067ee", features = ["bpp"] }
-rune = { git = "https://github.com/anomalyco/rune", rev = "55ef5268f22038a95344b3e9d2b4a25ddba731b1" }
+rune = { git = "https://github.com/anomalyco/rune", rev = "55ef5268f22038a95344b3e9d2b4a25ddba731b1", features = ["native-file-dialog"] }
+rune-theme-opencode = { git = "https://github.com/anomalyco/rune", rev = "55ef5268f22038a95344b3e9d2b4a25ddba731b1" }
 rune-kit = { git = "https://github.com/anomalyco/rune", rev = "55ef5268f22038a95344b3e9d2b4a25ddba731b1" }
 
 # Rune ships patched copies of these and expects apps that use it to patch them too.

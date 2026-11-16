@@ -11,3 +11,4 @@ anyhow = { workspace = true }
 usvg = "0.50.0"
 dxf = "0.6.2"
 lopdf = "0.47.0"
+i_overlay = "9.2.0"

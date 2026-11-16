@@ -14,5 +14,6 @@ kurbo = { workspace = true }
 anyhow = { workspace = true }
 rune = { workspace = true }
 rune-kit = { workspace = true }
+rune-theme-opencode = { workspace = true }
 nest-io.workspace = true
 nest-engine.workspace = true
