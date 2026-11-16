@@ -1,0 +1,14 @@
+[package]
+name = "nest-cli"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+
+[dependencies]
+nest-core = { workspace = true }
+kurbo = { workspace = true }
+anyhow = { workspace = true }
+clap = { version = "4.6.7", features = ["derive"] }
+nest-io.workspace = true
+nest-engine.workspace = true
+serde_json.workspace = true

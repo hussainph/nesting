@@ -1,0 +1,18 @@
+[package]
+name = "nest-app"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "nesting"
+path = "src/main.rs"
+
+[dependencies]
+nest-core = { workspace = true }
+kurbo = { workspace = true }
+anyhow = { workspace = true }
+rune = { workspace = true }
+rune-kit = { workspace = true }
+nest-io.workspace = true
+nest-engine.workspace = true
