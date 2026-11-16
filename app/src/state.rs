@@ -112,72 +112,6 @@ pub struct BoardSheet {
     pub utilization: Option<f64>,
 }
 
-pub struct StockDraft {
-    pub editing: Option<StockId>,
-    pub mode: usize, // 0 rectangle, 1 draw, 2 from file
-    pub kind: StockKind,
-    pub name: TextEdit,
-    pub material: TextEdit,
-    pub thickness: TextEdit,
-    pub quantity: TextEdit,
-    pub width: TextEdit,
-    pub height: TextEdit,
-    pub points: Vec<Point>,
-    pub closed: bool,
-    pub hover: Option<Point>,
-    pub file_outline: Option<BezPath>,
-    pub file_name: Option<String>,
-    pub error: Option<String>,
-}
-
-impl StockDraft {
-    pub fn new(kind: StockKind) -> StockDraft {
-        StockDraft {
-            editing: None,
-            mode: 0,
-            kind,
-            name: TextEdit::new(""),
-            material: TextEdit::new(""),
-            thickness: TextEdit::new(""),
-            quantity: TextEdit::new("1"),
-            width: TextEdit::new(if kind == StockKind::Sheet { "1200" } else { "600" }),
-            height: TextEdit::new(if kind == StockKind::Sheet { "900" } else { "400" }),
-            points: Vec::new(),
-            closed: false,
-            hover: None,
-            file_outline: None,
-            file_name: None,
-            error: None,
-        }
-    }
-
-    pub fn area_size(&self) -> (f64, f64) {
-        let w = parse_pos(&self.width.text).unwrap_or(600.0);
-        let h = parse_pos(&self.height.text).unwrap_or(400.0);
-        (w, h)
-    }
-
-    /// The outline the draft describes, or a message saying what's missing.
-    pub fn outline(&self) -> Result<BezPath, String> {
-        match self.mode {
-            0 => {
-                let w = parse_pos(&self.width.text).ok_or("Enter a width in mm.")?;
-                let h = parse_pos(&self.height.text).ok_or("Enter a height in mm.")?;
-                Ok(kurbo::Rect::new(0.0, 0.0, w, h).to_path(0.01))
-            }
-            1 => {
-                if self.points.len() < 3 {
-                    return Err("Click at least 3 corners to draw the shape.".into());
-                }
-                let path = nest_core::geom::polygon_path(&self.points);
-                let b = path.bounding_box();
-                Ok(kurbo::Affine::translate((-b.x0, -b.y0)) * path)
-            }
-            _ => self.file_outline.clone().ok_or_else(|| "Choose a DXF or SVG file with the outline.".into()),
-        }
-    }
-}
-
 #[derive(Clone)]
 pub struct Notice {
     pub id: u64,
@@ -220,7 +154,7 @@ pub struct App {
     pub canvas: [f32; 2],
     pub fit_pending: bool,
 
-    pub draft: Option<StockDraft>,
+    pub editor: Option<crate::editor::Editor>,
     /// Result sheets whose offcut was already saved.
     pub saved_offcuts: Vec<usize>,
     pub drop_over: bool,
@@ -289,7 +223,7 @@ impl App {
             drag_last: None,
             canvas: [0.0, 0.0],
             fit_pending: true,
-            draft: None,
+            editor: None,
             saved_offcuts: Vec::new(),
             drop_over: false,
             notices: Vec::new(),
@@ -456,72 +390,14 @@ impl App {
         }
     }
 
-    pub fn save_draft(&mut self) {
-        let Some(d) = self.draft.as_mut() else { return };
-        let outline = match d.outline() {
-            Ok(o) => o,
-            Err(e) => {
-                d.error = Some(e);
-                return;
-            }
-        };
-        let Some(quantity) = d.quantity.text.trim().parse::<u32>().ok().filter(|q| *q > 0) else {
-            d.error = Some("Enter how many you have.".into());
-            return;
-        };
-        let b = outline.bounding_box();
-        let default_name = format!(
-            "{} {} × {}",
-            if d.kind == StockKind::Remnant { "Remnant" } else { "Sheet" },
-            fmt_mm(b.width()),
-            fmt_mm(b.height())
-        );
-        let name = if d.name.text.trim().is_empty() { default_name } else { d.name.text.trim().to_string() };
-        let stock = Stock {
-            id: d.editing.unwrap_or_else(|| self.library.next_id()),
-            name,
-            kind: d.kind,
-            outline,
-            defects: Vec::new(),
-            quantity,
-            material: d.material.text.trim().to_string(),
-            thickness: parse_nonneg(&d.thickness.text).unwrap_or(0.0),
-        };
-        let id = stock.id;
-        match self.library.stock.iter_mut().find(|s| s.id == id) {
-            Some(existing) => *existing = stock,
-            None => {
-                self.library.stock.push(stock);
-                self.use_stock.push(id);
-            }
-        }
-        self.draft = None;
+    /// Saves the library and refreshes everything that draws stock.
+    pub fn after_stock_change(&mut self) {
         self.persist_library();
         self.refresh_stock_flats();
         self.changed();
         if self.result.is_none() {
             self.fit_pending = true;
         }
-    }
-
-    pub fn edit_stock(&mut self, id: StockId) {
-        let Some(s) = self.stock(id).cloned() else { return };
-        let mut d = StockDraft::new(s.kind);
-        d.editing = Some(id);
-        d.name = TextEdit::new(s.name.clone());
-        d.material = TextEdit::new(s.material.clone());
-        d.thickness = TextEdit::new(if s.thickness > 0.0 { fmt_mm(s.thickness) } else { String::new() });
-        d.quantity = TextEdit::new(s.quantity.to_string());
-        let b = s.bbox();
-        d.width = TextEdit::new(fmt_mm(b.width()));
-        d.height = TextEdit::new(fmt_mm(b.height()));
-        let ring = flatten_ring(&s.outline, 0.01);
-        if ring.len() != 4 {
-            d.mode = 1;
-            d.points = ring;
-            d.closed = true;
-        }
-        self.draft = Some(d);
     }
 
     /// The unused end of a result sheet, cut straight across past the last part: whichever of
@@ -584,7 +460,6 @@ impl App {
         self.use_stock.retain(|s| *s != id);
         self.persist_library();
         self.refresh_stock_flats();
-        self.draft = None;
         self.changed();
     }
 
@@ -592,18 +467,6 @@ impl App {
         if let Err(e) = self.library.save(&self.library_path) {
             self.notify("Couldn't save the stock library", Some(e.to_string()), true);
         }
-    }
-
-    pub fn load_outline(&mut self, path: PathBuf) {
-        let bus = self.bus.clone();
-        if let Some(d) = self.draft.as_mut() {
-            d.file_name = path.file_name().map(|f| f.to_string_lossy().into_owned());
-            d.error = None;
-        }
-        std::thread::spawn(move || {
-            let r = nest_io::import_outline(&path).map_err(|e| e.to_string());
-            bus.send(Msg::Outline(r));
-        });
     }
 
     // ------------------------------------------------------------------ settings
@@ -707,6 +570,22 @@ impl App {
         out
     }
 
+    pub fn zoom_by(&mut self, f: f32) {
+        let [w, h] = self.canvas;
+        match self.editor.as_mut() {
+            Some(e) => e.cam.zoom_about(w * 0.5, h * 0.5, f),
+            None => self.cam.zoom_about(w * 0.5, h * 0.5, f),
+        }
+    }
+
+    pub fn fit_view(&mut self) {
+        let size = self.canvas;
+        match self.editor.as_mut() {
+            Some(e) => e.fit(size),
+            None => self.fit(),
+        }
+    }
+
     pub fn fit(&mut self) {
         let [w, h] = self.canvas;
         if w <= 0.0 || h <= 0.0 {
@@ -766,16 +645,15 @@ impl App {
                     }
                 }
                 Msg::Outline(r) => {
-                    if let Some(d) = self.draft.as_mut() {
+                    if let Some(e) = self.editor.as_mut() {
                         match r {
                             Ok(path) => {
-                                let b = path.bounding_box();
-                                d.width = TextEdit::new(fmt_mm(b.width()));
-                                d.height = TextEdit::new(fmt_mm(b.height()));
-                                d.file_outline = Some(path);
-                                d.error = None;
+                                e.checkpoint();
+                                e.set_outline_from_path(&path);
+                                e.sync_fields();
+                                e.error = None;
                             }
-                            Err(e) => d.error = Some(e),
+                            Err(err) => e.error = Some(err),
                         }
                     }
                 }
@@ -792,6 +670,14 @@ impl App {
         let before = self.notices.len();
         self.notices.retain(|n| n.until > now);
         changed |= before != self.notices.len();
+        if let Some(e) = self.editor.as_mut() {
+            changed |= e.apply_if_left();
+            if e.fit_pending && self.canvas[0] > 0.0 {
+                e.fit_pending = false;
+                e.fit(self.canvas);
+                changed = true;
+            }
+        }
         if self.fit_pending && self.canvas[0] > 0.0 {
             self.fit_pending = false;
             self.fit();

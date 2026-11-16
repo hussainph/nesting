@@ -37,3 +37,15 @@ pub static SHEET: Icon = Icon {
     view: 16.0,
     body: r#"<path d="M2.5 3.5h11v9h-11z" stroke="currentColor" stroke-linejoin="round"/>"#,
 };
+
+pub static UNDO: Icon = Icon {
+    name: "nest-undo",
+    view: 16.0,
+    body: r#"<path d="M5.5 3.5 2.5 6.5l3 3" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 6.5h6.5a3.5 3.5 0 0 1 0 7H7" stroke="currentColor" stroke-linecap="round"/>"#,
+};
+
+pub static REDO: Icon = Icon {
+    name: "nest-redo",
+    view: 16.0,
+    body: r#"<path d="m10.5 3.5 3 3-3 3" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 6.5H6.5a3.5 3.5 0 0 0 0 7H9" stroke="currentColor" stroke-linecap="round"/>"#,
+};

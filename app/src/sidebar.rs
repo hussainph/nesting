@@ -146,7 +146,7 @@ fn stock_section(s: &App, k: &Kit) -> El {
         let edit = IconButton::new(&oc::EDIT)
             .variant(IconButtonVariant::GhostMuted)
             .label("Edit")
-            .on_press(move |s: &mut App| s.edit_stock(id))
+            .on_press(move |s: &mut App| s.open_editor(Some(id)))
             .build(k);
         list = list.child(
             row()
@@ -237,7 +237,7 @@ pub fn view(s: &App, k: &Kit, _cx: &mut Cx<App>, layer: &mut Vec<El>) -> El {
         .child(stock_section(s, k))
         .child(divider())
         .child(settings_section(s, k, layer));
-    let scroller = el().key("sidebar-scroll").w_full().grow(1.0).min_h(0.0).scroll(rune::ScrollSpec { stick_bottom: false }).child(body);
+    let scroller = col().key("sidebar-scroll").w_full().grow(1.0).min_h(0.0).scroll(rune::ScrollSpec { stick_bottom: false }).child(body);
     col()
         .key("sidebar")
         .w(WIDTH)

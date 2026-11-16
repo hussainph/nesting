@@ -110,7 +110,7 @@ pub fn view(s: &App, k: &Kit, _cx: &mut Cx<App>) -> El {
                 head = head.child(
                     Button::new(format!("Save offcut {} × {}", fmt_mm(ob.width()), fmt_mm(ob.height())))
                         .variant(ButtonVariant::GhostMuted)
-                        .size(rune_kit::ButtonSize::Small)
+                        .control_size(rune_kit::ControlSize::Regular)
                         .on_press(move |s: &mut App| s.save_offcut(i))
                         .build(k),
                 );

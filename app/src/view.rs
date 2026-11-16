@@ -4,9 +4,8 @@ use rune::{Cx, El, FileDialogOptions, Tx, col, el, row, spacer, text};
 use rune_kit::{Badge, BadgeVariant, Button, ButtonVariant, IconButton, IconButtonVariant, Kit, Spinner, Toast, ToastRegion};
 use rune_theme_opencode::icons as oc;
 
-use crate::state::{App, StockDraft};
-use crate::{board, dialog, icons, sidebar};
-use nest_core::StockKind;
+use crate::state::App;
+use crate::{board, editor, icons, sidebar};
 
 pub const IMPORT_EXTENSIONS: [&str; 5] = ["ai", "pdf", "dxf", "svg", "eps"];
 
@@ -20,7 +19,7 @@ pub fn pick_files(_s: &mut App, tx: &mut Tx) {
 }
 
 pub fn new_stock(s: &mut App) {
-    s.draft = Some(StockDraft::new(if s.library.stock.is_empty() { StockKind::Sheet } else { StockKind::Remnant }));
+    s.open_editor(None);
 }
 
 pub fn export(_s: &mut App, tx: &mut Tx) {
@@ -34,7 +33,9 @@ pub fn export(_s: &mut App, tx: &mut Tx) {
     });
 }
 
-fn toolbar(s: &App, k: &Kit) -> El {
+pub const TITLEBAR_H: f32 = 48.0;
+
+fn toolbar(s: &App, k: &Kit, insets: rune::ChromeInsets) -> El {
     let add = Button::new("Add files").icon(&icons::IMPORT).variant(ButtonVariant::Ghost).on_press_tx(pick_files).build(k);
     let export_btn = Button::new("Export")
         .icon(&icons::EXPORT)
@@ -57,19 +58,48 @@ fn toolbar(s: &App, k: &Kit) -> El {
     if !s.parts.is_empty() && !s.is_running() {
         clear = Button::new("Clear parts").variant(ButtonVariant::GhostMuted).on_press(|s: &mut App| s.clear_parts()).build(k);
     }
+    bar(k, insets, row().items_center().gap(8.0).child(add).child(clear), row().items_center().gap(8.0).child(export_btn).child(nest))
+}
+
+/// The titlebar band: `left` after the window controls, `right` at the far end.
+fn bar(k: &Kit, insets: rune::ChromeInsets, left: El, right: El) -> El {
     row()
         .key("toolbar")
-        .h(48.0)
+        .h(TITLEBAR_H)
         .items_center()
         .gap(8.0)
-        .px(10.0)
+        .pl(insets.leading + 10.0)
+        .pr(insets.trailing + 10.0)
+        .window_drag()
         .fill(k.c.bg_base)
         .border_sides([0.0, 0.0, 1.0, 0.0], k.c.border_weak)
-        .child(add)
-        .child(clear)
+        .child(left)
         .child(spacer())
-        .child(export_btn)
-        .child(nest)
+        .child(right)
+}
+
+fn zoom_controls(k: &Kit, zoom: f32) -> El {
+    let num = k.ty.ui.features("'tnum' 1");
+    row()
+        .items_center()
+        .gap(2.0)
+        .child(IconButton::new(&oc::MINUS).variant(IconButtonVariant::GhostMuted).label("Zoom out").on_press(|s: &mut App| s.zoom_by(1.0 / 1.25)).build(k))
+        .child(text(format!("{:.0}%", zoom * 100.0 / (72.0 / 25.4))).font(num).color(k.c.text_muted).w(44.0).align(rune::Align::Center))
+        .child(IconButton::new(&oc::PLUS).variant(IconButtonVariant::GhostMuted).label("Zoom in").on_press(|s: &mut App| s.zoom_by(1.25)).build(k))
+        .child(IconButton::new(&icons::FIT).variant(IconButtonVariant::GhostMuted).label("Fit to window").help("Fit to window").on_press(|s: &mut App| s.fit_view()).build(k))
+}
+
+fn status_row(k: &Kit, left: El, right: El) -> El {
+    row()
+        .key("status")
+        .h(36.0)
+        .items_center()
+        .px(12.0)
+        .fill(k.c.bg_base)
+        .border_sides([1.0, 0.0, 0.0, 0.0], k.c.border_weak)
+        .child(left)
+        .child(spacer())
+        .child(right)
 }
 
 fn status_bar(s: &App, k: &Kit) -> El {
@@ -110,29 +140,7 @@ fn status_bar(s: &App, k: &Kit) -> El {
                 .color(k.c.text_muted),
         );
     }
-    let zoom = row()
-        .items_center()
-        .gap(2.0)
-        .child(IconButton::new(&oc::MINUS).variant(IconButtonVariant::GhostMuted).label("Zoom out").on_press(|s: &mut App| {
-            let [w, h] = s.canvas;
-            s.cam.zoom_about(w * 0.5, h * 0.5, 1.0 / 1.25);
-        }).build(k))
-        .child(text(format!("{:.0}%", s.cam.zoom * 100.0 / (72.0 / 25.4))).font(num).color(k.c.text_muted).w(44.0).align(rune::Align::Center))
-        .child(IconButton::new(&oc::PLUS).variant(IconButtonVariant::GhostMuted).label("Zoom in").on_press(|s: &mut App| {
-            let [w, h] = s.canvas;
-            s.cam.zoom_about(w * 0.5, h * 0.5, 1.25);
-        }).build(k))
-        .child(IconButton::new(&icons::FIT).variant(IconButtonVariant::GhostMuted).label("Fit to window").help("Fit to window").on_press(|s: &mut App| s.fit()).build(k));
-    row()
-        .key("status")
-        .h(36.0)
-        .items_center()
-        .px(12.0)
-        .fill(k.c.bg_base)
-        .border_sides([1.0, 0.0, 0.0, 0.0], k.c.border_weak)
-        .child(left)
-        .child(spacer())
-        .child(zoom)
+    status_row(k, left, zoom_controls(k, s.cam.zoom))
 }
 
 fn notices(s: &App, k: &Kit) -> Option<El> {
@@ -157,13 +165,29 @@ fn notices(s: &App, k: &Kit) -> Option<El> {
 pub fn view(s: &App, cx: &mut Cx<App>) -> El {
     let k = rune_theme_opencode::kit(cx.system_dark());
     let mut layer = Vec::new();
-    let side = sidebar::view(s, k, cx, &mut layer);
-    let main = col().grow(1.0).min_w(0.0).h_full().min_h(0.0).child(board::view(s, k, cx)).child(status_bar(s, k));
+    let insets = cx.chrome_insets();
+    let (top, side, main) = match &s.editor {
+        Some(e) => {
+            let (l, r) = editor::toolbar_items(e, k);
+            let main = col()
+                .grow(1.0)
+                .min_w(0.0)
+                .h_full()
+                .min_h(0.0)
+                .child(el().key("editor-wrap").w_full().grow(1.0).min_h(0.0).clip_rounded(0.0).child(editor::canvas_view(s, e, k, cx)))
+                .child(status_row(k, editor::status(e, k), zoom_controls(k, e.cam.zoom)));
+            (bar(k, insets, l, r), editor::panel(e, k), main)
+        }
+        None => {
+            let main = col().grow(1.0).min_w(0.0).h_full().min_h(0.0).child(board::view(s, k, cx)).child(status_bar(s, k));
+            (toolbar(s, k, insets), sidebar::view(s, k, cx, &mut layer), main)
+        }
+    };
     let body = col()
         .w_full()
         .h_full()
         .fill(k.c.bg_base)
-        .child(toolbar(s, k))
+        .child(top)
         .child(row().w_full().grow(1.0).min_h(0.0).child(side).child(main))
         .on_drop_files(|s: &mut App, files, _tx| {
             s.drop_over = false;
@@ -171,7 +195,6 @@ pub fn view(s: &App, cx: &mut Cx<App>) -> El {
         })
         .accepts_extensions(&IMPORT_EXTENSIONS)
         .on_drop_hover(|s: &mut App, over, _tx| s.drop_over = over);
-    dialog::view(s, k, &mut layer);
     if let Some(n) = notices(s, k) {
         layer.push(n);
     }

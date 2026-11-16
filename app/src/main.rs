@@ -4,7 +4,7 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
 mod board;
-mod dialog;
+mod editor;
 mod icons;
 mod scenes;
 mod sidebar;
@@ -32,6 +32,9 @@ fn poll(s: &mut App, now: f64, tx: &mut Tx) -> bool {
 
 fn on_key(s: &mut App, e: &KeyEvent, tx: &mut Tx) -> bool {
     let cmd = e.mods.cmd || e.mods.ctrl;
+    if s.editor.is_some() {
+        return editor_key(s, e);
+    }
     match &e.key {
         Key::Enter if cmd => {
             s.start_nest();
@@ -41,16 +44,39 @@ fn on_key(s: &mut App, e: &KeyEvent, tx: &mut Tx) -> bool {
             view::pick_files(s, tx);
             true
         }
-        Key::Escape if s.draft.is_some() => {
-            s.draft = None;
-            true
-        }
         Key::Escape if s.run.is_some() => {
             s.stop_nest();
             true
         }
         _ => false,
     }
+}
+
+/// Editor keys: delete, nudge with arrows (Shift for 10 mm), undo and redo, Escape to deselect.
+fn editor_key(s: &mut App, e: &KeyEvent) -> bool {
+    use editor::{Sel, Tool};
+    let Some(ed) = s.editor.as_mut() else { return false };
+    let step = if e.mods.shift { 10.0 } else { 1.0 };
+    match &e.key {
+        Key::Backspace | Key::Delete => ed.delete_selection(),
+        Key::Left => ed.nudge(-step, 0.0),
+        Key::Right => ed.nudge(step, 0.0),
+        Key::Up => ed.nudge(0.0, step),
+        Key::Down => ed.nudge(0.0, -step),
+        Key::Command('z') if e.mods.shift => ed.redo(),
+        Key::Command('z') => ed.undo(),
+        Key::Command('y') => ed.redo(),
+        Key::Command('s') => s.save_editor(),
+        Key::Escape => {
+            if ed.tool == Tool::Damage {
+                ed.tool = Tool::Shape;
+            } else {
+                ed.select(Sel::None);
+            }
+        }
+        _ => return false,
+    }
+    true
 }
 
 fn main() {
@@ -64,5 +90,5 @@ fn main() {
         on_key: Some(on_key),
         ..AppSpec::new("Nesting", (1280.0, 820.0), App::new, view::view)
     };
-    rune::run(spec);
+    rune::App::new(spec).titlebar(rune::Titlebar::new(view::TITLEBAR_H)).run();
 }

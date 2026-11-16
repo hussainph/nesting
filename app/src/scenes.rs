@@ -4,7 +4,7 @@ use kurbo::{BezPath, Circle, Point, RoundedRect, Shape};
 use nest_core::library::Library;
 use nest_core::{NestResult, PartGeometry, Placement, SheetLayout, Stock, StockKind};
 
-use crate::state::{App, StockDraft};
+use crate::state::App;
 
 pub const SCENES: &[(&str, fn(&mut App))] = &[
     ("empty", empty),
@@ -12,7 +12,7 @@ pub const SCENES: &[(&str, fn(&mut App))] = &[
     ("result", result),
     ("running", running),
     ("add-remnant", add_remnant),
-    ("draw-remnant", draw_remnant),
+    ("edit-remnant", draw_remnant),
     ("arabic", arabic),
     ("engine", engine),
 ];
@@ -151,18 +151,16 @@ fn running(s: &mut App) {
 
 fn add_remnant(s: &mut App) {
     with_parts(s);
-    s.draft = Some(StockDraft::new(StockKind::Remnant));
+    s.open_editor(None);
 }
 
 fn draw_remnant(s: &mut App) {
     with_parts(s);
-    let mut d = StockDraft::new(StockKind::Remnant);
-    d.mode = 1;
-    d.points = vec![Point::new(0.0, 0.0), Point::new(600.0, 0.0), Point::new(600.0, 250.0), Point::new(350.0, 250.0), Point::new(350.0, 400.0)];
-    d.hover = Some(Point::new(0.0, 400.0));
-    s.draft = Some(d);
+    s.open_editor(Some(2));
+    let e = s.editor.as_mut().unwrap();
+    e.select(crate::editor::Sel::Vertex(3));
+    e.hover = crate::editor::Hit::Mid(1);
 }
-
 
 /// Real imports from `samples/`, nested with the stand-in packer.
 fn arabic(s: &mut App) {
