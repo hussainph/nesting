@@ -297,6 +297,18 @@ impl App {
             now: 0.0,
         };
         app.refresh_stock_flats();
+        // Files passed on the command line (Open with, or dropped on the exe) import at launch.
+        let files: Vec<PathBuf> = std::env::args()
+            .skip(1)
+            .map(PathBuf::from)
+            .filter(|p| {
+                p.is_file()
+                    && p.extension().and_then(|e| e.to_str()).is_some_and(|e| crate::view::IMPORT_EXTENSIONS.contains(&e.to_ascii_lowercase().as_str()))
+            })
+            .collect();
+        if !files.is_empty() {
+            app.import_files(files);
+        }
         app
     }
 
