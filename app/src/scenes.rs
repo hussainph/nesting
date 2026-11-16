@@ -14,6 +14,7 @@ pub const SCENES: &[(&str, fn(&mut App))] = &[
     ("add-remnant", add_remnant),
     ("draw-remnant", draw_remnant),
     ("arabic", arabic),
+    ("engine", engine),
 ];
 
 fn star(r1: f64, r2: f64, n: usize) -> BezPath {
@@ -176,5 +177,27 @@ fn arabic(s: &mut App) {
     }
     let r = fake_result(s);
     s.result_job = Some(s.job());
+    s.result = Some(r);
+}
+
+/// The real engine on the demo job, run to completion before the first frame.
+fn engine(s: &mut App) {
+    with_parts(s);
+    for f in ["arabic.svg"] {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../samples");
+        if let Ok(report) = nest_io::import_path(&dir.join(f)) {
+            for p in report.parts {
+                s.add_part(&p.name, p.geometry, 4);
+            }
+        }
+    }
+    s.settings.time_limit_secs = 6.0;
+    s.settings.seed = Some(1);
+    let job = s.job();
+    let r = nest_engine::nest(&job, &nest_engine::Control::default(), |_| {}).expect("nest");
+    for v in nest_engine::validate::check(&job, &r) {
+        eprintln!("invalid: {v}");
+    }
+    s.result_job = Some(job);
     s.result = Some(r);
 }
