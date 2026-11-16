@@ -1,11 +1,11 @@
 //! The board: the sheets of the current job or result, drawn on a pannable, zoomable canvas.
 
 use kurbo::{Affine, Point};
-use rune::{Color, Cx, El, LineCap, Shape, canvas, col, el, text};
+use rune::{Color, Cx, El, LineCap, Shape, canvas, col, el, row, text};
 use rune_kit::{Button, ButtonVariant, Kit};
 
 use crate::icons;
-use crate::state::{App, Camera, Flat, fmt_mm};
+use crate::state::{App, Camera, Cut, Flat, fmt_mm};
 use nest_core::StockKind;
 
 pub struct Colors {
@@ -96,13 +96,27 @@ pub fn view(s: &App, k: &Kit, _cx: &mut Cx<App>) -> El {
         if let Some(u) = sheet.utilization {
             label.push_str(&format!("  ·  {:.1}% used", u * 100.0));
         }
-        labels.push(
-            text(label)
-                .font(k.ty.small.features("'tnum' 1"))
-                .color(k.c.text_muted)
-                .single_line()
-                .absolute(tl[0], tl[1] - 20.0),
+        let mut head = row().items_center().gap(8.0).h(24.0).absolute(tl[0], tl[1] - 28.0).child(
+            text(label).font(k.ty.small.features("'tnum' 1")).color(k.c.text_muted).single_line(),
         );
+        if s.result.is_some() && !s.is_running() && !s.saved_offcuts.contains(&i) {
+            if let Some(o) = s.offcut(i) {
+                let (a, b2) = match o.cut {
+                    Cut::X(x) => (Point::new(x, b.y0), Point::new(x, b.y1)),
+                    Cut::Y(y) => (Point::new(b.x0, y), Point::new(b.x1, y)),
+                };
+                shape = shape.line(cam.to_screen(t * a), cam.to_screen(t * b2), 1.5, LineCap::Butt, c.part_selected_edge);
+                let ob = kurbo::Shape::bounding_box(&o.outline);
+                head = head.child(
+                    Button::new(format!("Save offcut {} × {}", fmt_mm(ob.width()), fmt_mm(ob.height())))
+                        .variant(ButtonVariant::GhostMuted)
+                        .size(rune_kit::ButtonSize::Small)
+                        .on_press(move |s: &mut App| s.save_offcut(i))
+                        .build(k),
+                );
+            }
+        }
+        labels.push(head);
     }
 
     let board_el = canvas(shape)

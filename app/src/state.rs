@@ -221,6 +221,8 @@ pub struct App {
     pub fit_pending: bool,
 
     pub draft: Option<StockDraft>,
+    /// Result sheets whose offcut was already saved.
+    pub saved_offcuts: Vec<usize>,
     pub drop_over: bool,
     pub notices: Vec<Notice>,
     pub next_notice: u64,
@@ -288,6 +290,7 @@ impl App {
             canvas: [0.0, 0.0],
             fit_pending: true,
             draft: None,
+            saved_offcuts: Vec::new(),
             drop_over: false,
             notices: Vec::new(),
             next_notice: 1,
@@ -509,6 +512,61 @@ impl App {
         self.draft = Some(d);
     }
 
+    /// The unused end of a result sheet, cut straight across past the last part: whichever of
+    /// a vertical or horizontal cut leaves more material. None when what's left is too small
+    /// to be worth keeping (under 100 mm on a side).
+    pub fn offcut(&self, sheet_index: usize) -> Option<Offcut> {
+        let result = self.result.as_ref()?;
+        let job = self.result_job.as_ref()?;
+        let sheet = result.sheets.get(sheet_index)?;
+        let stock = job.stock.iter().find(|s| s.id == sheet.stock_id)?;
+        let ring = flatten_ring(&stock.outline, 0.05);
+        let (mut max_x, mut max_y) = (f64::MIN, f64::MIN);
+        for p in &sheet.placements {
+            let flat = self.flats.get(&p.part_id)?;
+            let t = p.affine();
+            for q in &flat.outer {
+                let w = t * *q;
+                max_x = max_x.max(w.x);
+                max_y = max_y.max(w.y);
+            }
+        }
+        if max_x == f64::MIN {
+            return None;
+        }
+        let gap = job.settings.spacing.max(1.0) + 1.0;
+        let right = clip_half(&ring, |p| p.x - (max_x + gap));
+        let top = clip_half(&ring, |p| p.y - (max_y + gap));
+        let area = |r: &[Point]| nest_core::geom::ring_area(r).abs();
+        let (keep, cut) = if area(&right) >= area(&top) { (right, Cut::X(max_x + gap)) } else { (top, Cut::Y(max_y + gap)) };
+        let path = nest_core::geom::polygon_path(&keep);
+        let b = path.bounding_box();
+        if keep.len() < 3 || b.width() < 100.0 || b.height() < 100.0 {
+            return None;
+        }
+        Some(Offcut { outline: kurbo::Affine::translate((-b.x0, -b.y0)) * path, cut, stock_name: stock.name.clone(), material: stock.material.clone(), thickness: stock.thickness })
+    }
+
+    pub fn save_offcut(&mut self, sheet_index: usize) {
+        let Some(o) = self.offcut(sheet_index) else { return };
+        let b = o.outline.bounding_box();
+        let id = self.library.next_id();
+        self.library.stock.push(Stock {
+            id,
+            name: format!("Offcut {} × {}", fmt_mm(b.width()), fmt_mm(b.height())),
+            kind: StockKind::Remnant,
+            outline: o.outline,
+            defects: Vec::new(),
+            quantity: 1,
+            material: o.material,
+            thickness: o.thickness,
+        });
+        self.persist_library();
+        self.refresh_stock_flats();
+        self.saved_offcuts.push(sheet_index);
+        self.notify(format!("Saved offcut {} × {} mm", fmt_mm(b.width()), fmt_mm(b.height())), Some(format!("Cut from {}.", o.stock_name)), false);
+    }
+
     pub fn delete_stock(&mut self, id: StockId) {
         self.library.stock.retain(|s| s.id != id);
         self.use_stock.retain(|s| *s != id);
@@ -579,6 +637,7 @@ impl App {
         self.run = Some(Run { ctl: ctl.clone(), started: Instant::now() });
         self.result_job = Some(job.clone());
         self.result = None;
+        self.saved_offcuts.clear();
         self.stale = false;
         self.elapsed = 0.0;
         self.fit_pending = true;
@@ -746,4 +805,50 @@ fn export_sheets(job: &NestJob, result: &NestResult, path: &Path) -> anyhow::Res
         written.push(file);
     }
     Ok(written)
+}
+
+/// Where an offcut is cut from its sheet, in sheet coordinates.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Cut {
+    X(f64),
+    Y(f64),
+}
+
+pub struct Offcut {
+    pub outline: BezPath,
+    pub cut: Cut,
+    pub stock_name: String,
+    pub material: String,
+    pub thickness: f64,
+}
+
+/// Keeps the part of `ring` where `side(p) >= 0` (Sutherland–Hodgman against one line).
+fn clip_half(ring: &[Point], side: impl Fn(Point) -> f64) -> Vec<Point> {
+    let mut out = Vec::new();
+    let n = ring.len();
+    for i in 0..n {
+        let a = ring[i];
+        let b = ring[(i + 1) % n];
+        let (da, db) = (side(a), side(b));
+        if da >= 0.0 {
+            out.push(a);
+        }
+        if (da >= 0.0) != (db >= 0.0) {
+            let t = da / (da - db);
+            out.push(a.lerp(b, t));
+        }
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn clip_keeps_right_half_of_square() {
+        let sq = [Point::new(0.0, 0.0), Point::new(10.0, 0.0), Point::new(10.0, 10.0), Point::new(0.0, 10.0)];
+        let r = clip_half(&sq, |p| p.x - 4.0);
+        assert!((nest_core::geom::ring_area(&r).abs() - 60.0).abs() < 1e-9);
+    }
 }
