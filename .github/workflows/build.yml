@@ -1,0 +1,35 @@
+name: build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo test --workspace
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo build --release -p nest-app -p nest-cli
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nesting-windows
+          path: |
+            target/release/nesting.exe
+            target/release/nest-cli.exe
+
+  linux-cli:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y libxkbcommon-dev libwayland-dev
+      - run: cargo build --release -p nest-cli
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nest-cli-linux
+          path: target/release/nest-cli

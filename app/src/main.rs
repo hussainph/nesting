@@ -1,5 +1,8 @@
 //! Nesting: lay out laser and router parts on sheets and remnants.
 
+// No console window behind the app in Windows release builds.
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
+
 mod board;
 mod dialog;
 mod icons;
