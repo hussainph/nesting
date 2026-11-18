@@ -150,11 +150,23 @@ pub struct App {
     pub elapsed: f64,
 
     pub cam: Camera,
-    pub drag_last: Option<[f32; 2]>,
     pub canvas: [f32; 2],
     pub fit_pending: bool,
 
     pub editor: Option<crate::editor::Editor>,
+
+    /// Hand edits on the board.
+    pub sel: crate::layout::BoardSel,
+    pub op: Option<crate::layout::Op>,
+    pub hover: Option<crate::layout::Grip>,
+    pub hover_part: bool,
+    /// A sheet being turned by its handle: board index and degrees so far.
+    pub spin: Option<(usize, f64)>,
+    pub history: Vec<crate::layout::Snap>,
+    pub future: Vec<crate::layout::Snap>,
+    /// Placements per result sheet that overlap, sit too close or leave the stock.
+    pub conflicts: Vec<Vec<usize>>,
+    pub bar: crate::layout::Bar,
     /// Result sheets whose offcut was already saved.
     pub saved_offcuts: Vec<usize>,
     pub drop_over: bool,
@@ -220,10 +232,18 @@ impl App {
             stale: false,
             elapsed: 0.0,
             cam: Camera::default(),
-            drag_last: None,
             canvas: [0.0, 0.0],
             fit_pending: true,
             editor: None,
+            sel: Default::default(),
+            op: None,
+            hover: None,
+            hover_part: false,
+            spin: None,
+            history: Vec::new(),
+            future: Vec::new(),
+            conflicts: Vec::new(),
+            bar: Default::default(),
             saved_offcuts: Vec::new(),
             drop_over: false,
             notices: Vec::new(),
@@ -345,8 +365,8 @@ impl App {
     }
 
     pub fn remove_part(&mut self, id: PartId) {
+        // Flats stay: a nest result on the board may still show this part.
         self.parts.retain(|p| p.id != id);
-        self.flats.remove(&id);
         self.qty_edits.remove(&id);
         if self.selected == Some(id) {
             self.selected = None;
@@ -363,6 +383,18 @@ impl App {
         self.result_job = None;
         self.stale = false;
         self.fit_pending = true;
+        self.reset_board_edits();
+    }
+
+    /// Drops the selection, undo history and conflicts: the layout they refer to is gone.
+    pub fn reset_board_edits(&mut self) {
+        self.sel = crate::layout::BoardSel::None;
+        self.op = None;
+        self.spin = None;
+        self.history.clear();
+        self.future.clear();
+        self.conflicts.clear();
+        self.bar.pending = None;
     }
 
     pub fn qty_changed(&mut self, id: PartId) {
@@ -379,6 +411,9 @@ impl App {
     // ------------------------------------------------------------------ stock
 
     pub fn toggle_stock(&mut self, id: StockId) {
+        if matches!(self.sel, crate::layout::BoardSel::Sheet(_)) {
+            self.sel = crate::layout::BoardSel::None;
+        }
         if let Some(i) = self.use_stock.iter().position(|s| *s == id) {
             self.use_stock.remove(i);
         } else {
@@ -456,6 +491,9 @@ impl App {
     }
 
     pub fn delete_stock(&mut self, id: StockId) {
+        if matches!(self.sel, crate::layout::BoardSel::Sheet(_)) {
+            self.sel = crate::layout::BoardSel::None;
+        }
         self.library.stock.retain(|s| s.id != id);
         self.use_stock.retain(|s| *s != id);
         self.persist_library();
@@ -463,7 +501,7 @@ impl App {
         self.changed();
     }
 
-    fn persist_library(&mut self) {
+    pub fn persist_library(&mut self) {
         if let Err(e) = self.library.save(&self.library_path) {
             self.notify("Couldn't save the stock library", Some(e.to_string()), true);
         }
@@ -513,6 +551,7 @@ impl App {
         self.result_job = Some(job.clone());
         self.result = None;
         self.saved_offcuts.clear();
+        self.reset_board_edits();
         self.stale = false;
         self.elapsed = 0.0;
         self.fit_pending = true;
@@ -534,6 +573,10 @@ impl App {
 
     pub fn export(&mut self, path: PathBuf) {
         let (Some(result), Some(job)) = (self.result.clone(), self.result_job.clone()) else { return };
+        let n = self.conflict_count();
+        if n > 0 {
+            self.notify(format!("{n} {} overlapping or off the sheet", if n == 1 { "part is" } else { "parts are" }), Some("Exported anyway. Check the parts marked red.".into()), true);
+        }
         let bus = self.bus.clone();
         std::thread::spawn(move || {
             let r = export_sheets(&job, &result, &path).map_err(|e| e.to_string());
@@ -640,6 +683,7 @@ impl App {
                             if first {
                                 self.fit_pending = true;
                             }
+                            self.refresh_conflicts();
                         }
                         Err(e) => self.notify("Nesting failed", Some(e), true),
                     }
@@ -670,6 +714,8 @@ impl App {
         let before = self.notices.len();
         self.notices.retain(|n| n.until > now);
         changed |= before != self.notices.len();
+        changed |= self.apply_bar_if_left();
+        self.sync_bar();
         if let Some(e) = self.editor.as_mut() {
             changed |= e.apply_if_left();
             if e.fit_pending && self.canvas[0] > 0.0 {

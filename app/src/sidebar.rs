@@ -99,7 +99,11 @@ fn parts_section(s: &App, k: &Kit) -> El {
             .radius(k.radius.md)
             .fill(if selected { k.c.surface_hover } else { Color::TRANSPARENT })
             .hover(k.c.hover)
-            .on_press(move |s: &mut App| s.selected = if s.selected == Some(id) { None } else { Some(id) })
+            .on_press(move |s: &mut App| {
+                s.set_sel(crate::layout::BoardSel::None);
+                s.selected = if s.selected == Some(id) { None } else { Some(id) };
+                s.sync_bar();
+            })
             .child(thumb(&flat, 32.0, fill, k.c.text_muted))
             .child(info)
             .child(qty_el)

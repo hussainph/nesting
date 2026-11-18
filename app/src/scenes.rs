@@ -11,6 +11,8 @@ pub const SCENES: &[(&str, fn(&mut App))] = &[
     ("parts", with_parts),
     ("result", result),
     ("running", running),
+    ("select-part", select_part),
+    ("select-sheet", select_sheet),
     ("add-remnant", add_remnant),
     ("edit-remnant", draw_remnant),
     ("arabic", arabic),
@@ -142,6 +144,25 @@ fn result(s: &mut App) {
     s.result = Some(r);
     s.selected = s.parts.iter().find(|p| p.name == "Ring").map(|p| p.id);
     s.fit_pending = true;
+}
+
+fn select_part(s: &mut App) {
+    result(s);
+    s.selected = None;
+    let r = s.result.as_ref().unwrap();
+    let at = r
+        .sheets
+        .iter()
+        .enumerate()
+        .find_map(|(si, sh)| sh.placements.iter().position(|p| s.part(p.part_id).is_some_and(|q| q.name == "Name plate")).map(|pi| (si, pi)))
+        .unwrap();
+    s.set_sel(crate::layout::BoardSel::Parts(vec![at]));
+}
+
+fn select_sheet(s: &mut App) {
+    result(s);
+    s.selected = None;
+    s.set_sel(crate::layout::BoardSel::Sheet(0));
 }
 
 fn running(s: &mut App) {

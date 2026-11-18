@@ -32,12 +32,6 @@ pub static FIT: Icon = Icon {
     body: r#"<path d="M2.5 6V3.5a1 1 0 0 1 1-1H6M10 2.5h2.5a1 1 0 0 1 1 1V6M13.5 10v2.5a1 1 0 0 1-1 1H10M6 13.5H3.5a1 1 0 0 1-1-1V10" stroke="currentColor" stroke-linecap="round"/>"#,
 };
 
-pub static SHEET: Icon = Icon {
-    name: "nest-sheet",
-    view: 16.0,
-    body: r#"<path d="M2.5 3.5h11v9h-11z" stroke="currentColor" stroke-linejoin="round"/>"#,
-};
-
 pub static UNDO: Icon = Icon {
     name: "nest-undo",
     view: 16.0,
@@ -48,4 +42,28 @@ pub static REDO: Icon = Icon {
     name: "nest-redo",
     view: 16.0,
     body: r#"<path d="m10.5 3.5 3 3-3 3" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 6.5H6.5a3.5 3.5 0 0 0 0 7H9" stroke="currentColor" stroke-linecap="round"/>"#,
+};
+
+pub static ROTATE_CW: Icon = Icon {
+    name: "nest-rotate-cw",
+    view: 16.0,
+    body: r#"<path d="M13 8a5 5 0 1 1-1.46-3.54" stroke="currentColor" stroke-linecap="round"/><path d="M12 1.75v3h-3" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>"#,
+};
+
+pub static ROTATE_CCW: Icon = Icon {
+    name: "nest-rotate-ccw",
+    view: 16.0,
+    body: r#"<path d="M3 8a5 5 0 1 0 1.46-3.54" stroke="currentColor" stroke-linecap="round"/><path d="M4 1.75v3h3" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>"#,
+};
+
+pub static LINK: Icon = Icon {
+    name: "nest-link",
+    view: 16.0,
+    body: r#"<path d="M6.5 9.5l3-3" stroke="currentColor" stroke-linecap="round"/><path d="M7 4.5l1.25-1.25a2.5 2.5 0 0 1 3.5 3.5L10.5 8M9 11.5l-1.25 1.25a2.5 2.5 0 0 1-3.5-3.5L5.5 8" stroke="currentColor" stroke-linecap="round"/>"#,
+};
+
+pub static UNLINK: Icon = Icon {
+    name: "nest-unlink",
+    view: 16.0,
+    body: r#"<path d="M7 4.5l1.25-1.25a2.5 2.5 0 0 1 3.5 3.5L10.5 8M9 11.5l-1.25 1.25a2.5 2.5 0 0 1-3.5-3.5L5.5 8" stroke="currentColor" stroke-linecap="round"/>"#,
 };

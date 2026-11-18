@@ -3,7 +3,7 @@
 
 use kurbo::Point;
 use nest_core::geom::{flatten, flatten_ring, point_in_ring};
-use nest_core::{NestJob, NestResult, Part};
+use nest_core::{NestJob, NestResult, Part, SheetLayout};
 
 /// Allowed shortfall on distances, in mm: fine flattening error plus f32 rounding in the engine.
 const SLACK: f64 = 0.06;
@@ -105,7 +105,6 @@ fn part_rings(part: &Part, a: kurbo::Affine) -> (Ring, Vec<Ring>) {
 
 /// Returns a description of every problem found; empty means the result is valid.
 pub fn check(job: &NestJob, res: &NestResult) -> Vec<String> {
-    let s = &job.settings;
     let mut errs = Vec::new();
 
     // Counts: never place more copies than asked for.
@@ -144,80 +143,101 @@ pub fn check(job: &NestJob, res: &NestResult) -> Vec<String> {
     }
 
     for (si, sh) in res.sheets.iter().enumerate() {
-        let Some(stock) = job.stock.iter().find(|st| st.id == sh.stock_id) else {
-            continue;
-        };
-        let outline = Ring::new(flatten_ring(&stock.outline, FLAT));
-        let defects: Vec<Ring> = stock
-            .defects
-            .iter()
-            .flat_map(|d| flatten(d, FLAT))
-            .filter(|(r, c)| *c && r.len() >= 3)
-            .map(|(r, _)| Ring::new(r))
-            .collect();
-
-        let parts: Vec<(usize, Ring, Vec<Ring>)> = sh
-            .placements
-            .iter()
-            .enumerate()
-            .filter_map(|(i, pl)| {
-                let part = job.parts.iter().find(|p| p.id == pl.part_id)?;
-                let (o, h) = part_rings(part, pl.affine());
-                Some((i, o, h))
-            })
-            .collect();
-
-        for (i, ring, _) in &parts {
-            let tag = format!("sheet {si} placement {i}");
-            if !ring.pts.iter().all(|p| point_in_ring(*p, &outline.pts)) {
-                errs.push(format!("{tag}: outside the stock"));
-                continue;
-            }
-            let d = ring_dist(ring, &outline, s.edge_margin + 1.0);
-            if d < s.edge_margin - SLACK {
-                errs.push(format!(
-                    "{tag}: {d:.3} mm from the edge, margin is {}",
-                    s.edge_margin
-                ));
-            }
-            for (di, def) in defects.iter().enumerate() {
-                if !ring.near(def, s.spacing + 1.0) {
-                    continue;
-                }
-                let inside = def.pts.iter().any(|p| point_in_ring(*p, &ring.pts))
-                    || ring.pts.iter().any(|p| point_in_ring(*p, &def.pts));
-                let d = ring_dist(ring, def, s.spacing + 1.0);
-                if inside || d < s.spacing - SLACK {
-                    errs.push(format!("{tag}: {d:.3} mm from defect {di}"));
-                }
-            }
-        }
-
-        for a in 0..parts.len() {
-            for b in (a + 1)..parts.len() {
-                let (ia, ra, ha) = &parts[a];
-                let (ib, rb, hb) = &parts[b];
-                if !ra.near(rb, s.spacing + 1.0) {
-                    continue;
-                }
-                // Part-in-part: one part entirely inside a hole of the other.
-                let in_hole = |inner: &Ring, holes: &[Ring]| {
-                    holes.iter().any(|h| {
-                        inner.pts.iter().all(|p| point_in_ring(*p, &h.pts))
-                            && ring_dist(inner, h, s.spacing + 1.0) >= s.spacing - SLACK
-                    })
-                };
-                if in_hole(rb, ha) || in_hole(ra, hb) {
-                    continue;
-                }
-                let overlap = ra.pts.iter().any(|p| point_in_ring(*p, &rb.pts))
-                    || rb.pts.iter().any(|p| point_in_ring(*p, &ra.pts));
-                let d = ring_dist(ra, rb, s.spacing + 1.0);
-                if overlap || d < s.spacing - SLACK {
-                    errs.push(format!("sheet {si}: placements {ia} and {ib} are {d:.3} mm apart (overlap: {overlap}), spacing is {}", s.spacing));
-                }
-            }
+        for (_, msg) in sheet_problems(job, sh) {
+            errs.push(format!("sheet {si}: {msg}"));
         }
     }
     errs
+}
+
+/// Placements on one sheet that break a rule, with what's wrong. Each entry names the
+/// placement indices involved (two for a pair that's too close).
+pub fn sheet_problems(job: &NestJob, sh: &SheetLayout) -> Vec<(Vec<usize>, String)> {
+    let s = &job.settings;
+    let mut out = Vec::new();
+    let Some(stock) = job.stock.iter().find(|st| st.id == sh.stock_id) else {
+        return out;
+    };
+    let outline = Ring::new(flatten_ring(&stock.outline, FLAT));
+    let defects: Vec<Ring> = stock
+        .defects
+        .iter()
+        .flat_map(|d| flatten(d, FLAT))
+        .filter(|(r, c)| *c && r.len() >= 3)
+        .map(|(r, _)| Ring::new(r))
+        .collect();
+
+    let parts: Vec<(usize, Ring, Vec<Ring>)> = sh
+        .placements
+        .iter()
+        .enumerate()
+        .filter_map(|(i, pl)| {
+            let part = job.parts.iter().find(|p| p.id == pl.part_id)?;
+            let (o, h) = part_rings(part, pl.affine());
+            Some((i, o, h))
+        })
+        .collect();
+
+    for (i, ring, _) in &parts {
+        let tag = format!("placement {i}");
+        if !ring.pts.iter().all(|p| point_in_ring(*p, &outline.pts)) {
+            out.push((vec![*i], format!("{tag}: outside the stock")));
+            continue;
+        }
+        let d = ring_dist(ring, &outline, s.edge_margin + 1.0);
+        if d < s.edge_margin - SLACK {
+            out.push((vec![*i], format!("{tag}: {d:.3} mm from the edge, margin is {}", s.edge_margin)));
+        }
+        for (di, def) in defects.iter().enumerate() {
+            if !ring.near(def, s.spacing + 1.0) {
+                continue;
+            }
+            let inside = def.pts.iter().any(|p| point_in_ring(*p, &ring.pts))
+                || ring.pts.iter().any(|p| point_in_ring(*p, &def.pts));
+            let d = ring_dist(ring, def, s.spacing + 1.0);
+            if inside || d < s.spacing - SLACK {
+                out.push((vec![*i], format!("{tag}: {d:.3} mm from defect {di}")));
+            }
+        }
+    }
+
+    for a in 0..parts.len() {
+        for b in (a + 1)..parts.len() {
+            let (ia, ra, ha) = &parts[a];
+            let (ib, rb, hb) = &parts[b];
+            if !ra.near(rb, s.spacing + 1.0) {
+                continue;
+            }
+            // Part-in-part: one part entirely inside a hole of the other.
+            let in_hole = |inner: &Ring, holes: &[Ring]| {
+                holes.iter().any(|h| {
+                    inner.pts.iter().all(|p| point_in_ring(*p, &h.pts))
+                        && ring_dist(inner, h, s.spacing + 1.0) >= s.spacing - SLACK
+                })
+            };
+            if in_hole(rb, ha) || in_hole(ra, hb) {
+                continue;
+            }
+            let overlap = ra.pts.iter().any(|p| point_in_ring(*p, &rb.pts))
+                || rb.pts.iter().any(|p| point_in_ring(*p, &ra.pts));
+            let d = ring_dist(ra, rb, s.spacing + 1.0);
+            if overlap || d < s.spacing - SLACK {
+                out.push((vec![*ia, *ib], format!("placements {ia} and {ib} are {d:.3} mm apart (overlap: {overlap}), spacing is {}", s.spacing)));
+            }
+        }
+    }
+    out
+}
+
+/// Indices of the placements on each sheet that overlap, sit too close, or leave the stock.
+pub fn conflicts(job: &NestJob, res: &NestResult) -> Vec<Vec<usize>> {
+    res.sheets
+        .iter()
+        .map(|sh| {
+            let mut v: Vec<usize> = sheet_problems(job, sh).into_iter().flat_map(|(i, _)| i).collect();
+            v.sort_unstable();
+            v.dedup();
+            v
+        })
+        .collect()
 }

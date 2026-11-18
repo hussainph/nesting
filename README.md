@@ -15,10 +15,23 @@ Rust 1.99.1 is pinned in `rust-toolchain.toml`. rustup installs it on first buil
 
 1. Add parts. Drop AI, PDF, DXF or SVG files on the window, or use **Add files**. Every closed outline becomes a part. Holes stay with their part, and the separate dots of Arabic letters become their own parts.
 2. Set quantities in the parts list.
-3. Pick stock. Tick the sheets and remnants to use. Use **+** next to Stock to add a sheet or remnant by size, by clicking its corners, or from a DXF or SVG outline.
+3. Pick stock. Tick the sheets and remnants to use. Use **+** next to Stock to draw a new sheet or remnant on the canvas, or the pencil on a row to edit one. Click a sheet on the board to select it, then rotate it with the round handle, the bar's rotate buttons, or R and Shift+R. The nest fills each sheet from the left as it lies on the board.
 4. **Nest** (Ctrl+Enter). The best layout so far shows while it runs. **Stop** keeps it.
 5. **Export** writes one DXF or SVG per sheet. Layers: `CUT` (black), `MARK` (red, engraving), `SHEET` (blue, the stock outline).
 6. **Save offcut** on a sheet adds the unused end of that sheet to stock as a new remnant.
+
+### Adjusting a nest by hand
+
+Click a part to select it. Shift-click adds to the selection, and dragging a box on a sheet selects everything inside it.
+
+- Drag a part to move it, including onto another sheet. Arrow keys nudge by 1 mm, or 10 mm with Shift.
+- Drag the round handle to rotate (hold Shift to snap to 15°). R and Shift+R turn a quarter.
+- Drag a square handle to resize. Resizing changes every copy of that part and applies to the next nest.
+- Type exact X, Y, width, height or angle in the bar at the top of the board.
+- Parts that overlap, sit closer than the spacing, or leave the sheet turn red.
+- ⌘Z / Ctrl+Z undoes, Shift+⌘Z redoes.
+
+Pan with a two-finger scroll, a middle-button drag, or by dragging the empty board.
 
 ### AI files
 
@@ -60,4 +73,4 @@ cargo test -p nest-engine --release -- --ignored --nocapture bench   # engine be
 target/debug/nesting --snap out.png --scene result                   # headless screenshot
 ```
 
-Scenes: `empty`, `parts`, `result`, `running`, `add-remnant`, `draw-remnant`, `arabic`, `engine`.
+Scenes: `empty`, `parts`, `result`, `running`, `select-part`, `select-sheet`, `add-remnant`, `edit-remnant`, `arabic`, `engine`.

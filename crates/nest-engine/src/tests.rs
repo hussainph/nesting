@@ -219,7 +219,7 @@ fn remnant_used_before_sheet() {
 
 #[test]
 fn overflow_goes_to_sheet_and_reports_missing() {
-    let parts = vec![part(1, "Big", rect(200.0, 150.0), vec![], 12)];
+    let parts = vec![part(1, "Big", rect(200.0, 150.0), vec![], 20)];
     let job = NestJob {
         parts,
         stock: vec![
@@ -231,7 +231,7 @@ fn overflow_goes_to_sheet_and_reports_missing() {
     let res = run(&job);
     assert_valid(&job, &res);
     assert!(res.unplaced_count() > 0);
-    assert_eq!(res.placed_count() as u32 + res.unplaced_count(), 12);
+    assert_eq!(res.placed_count() as u32 + res.unplaced_count(), 20);
 }
 
 #[test]
