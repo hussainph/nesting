@@ -58,7 +58,11 @@ fn toolbar(s: &App, k: &Kit, insets: rune::ChromeInsets) -> El {
     if !s.parts.is_empty() && !s.is_running() {
         clear = Button::new("Clear parts").variant(ButtonVariant::GhostMuted).on_press(|s: &mut App| s.clear_parts()).build(k);
     }
-    bar(k, insets, row().items_center().gap(8.0).child(add).child(clear), row().items_center().gap(8.0).child(export_btn).child(nest))
+    let mut restart = el();
+    if s.update_ready.is_some() {
+        restart = Button::new("Restart to update").variant(ButtonVariant::Ghost).on_press(|_: &mut App| crate::update::restart()).build(k);
+    }
+    bar(k, insets, row().items_center().gap(8.0).child(add).child(clear), row().items_center().gap(8.0).child(restart).child(export_btn).child(nest))
 }
 
 /// The titlebar band: `left` after the window controls, `right` at the far end.

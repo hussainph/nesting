@@ -13,6 +13,7 @@ pub const SCENES: &[(&str, fn(&mut App))] = &[
     ("running", running),
     ("select-part", select_part),
     ("select-sheet", select_sheet),
+    ("update-ready", update_ready),
     ("add-remnant", add_remnant),
     ("edit-remnant", draw_remnant),
     ("arabic", arabic),
@@ -163,6 +164,12 @@ fn select_sheet(s: &mut App) {
     result(s);
     s.selected = None;
     s.set_sel(crate::layout::BoardSel::Sheet(0));
+}
+
+fn update_ready(s: &mut App) {
+    result(s);
+    s.update_ready = Some("0.1.3".into());
+    s.notify("Updated to 0.1.3", Some("Restart Nesting to use it.".into()), false);
 }
 
 fn running(s: &mut App) {

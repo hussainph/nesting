@@ -17,3 +17,7 @@ rune-kit = { workspace = true }
 rune-theme-opencode = { workspace = true }
 nest-io.workspace = true
 nest-engine.workspace = true
+ureq = "3"
+sha2 = "0.11"
+semver = "1"
+self-replace = "1"

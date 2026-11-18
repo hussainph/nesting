@@ -10,6 +10,7 @@ mod layout;
 mod scenes;
 mod sidebar;
 mod state;
+mod update;
 mod view;
 
 use rune::{AppSpec, Key, KeyEvent, Tx};
@@ -17,6 +18,7 @@ use state::App;
 
 fn setup(s: &mut App, waker: rune::Waker) {
     s.bus.set_waker(waker);
+    update::start(s.bus.clone());
 }
 
 fn poll(s: &mut App, now: f64, tx: &mut Tx) -> bool {

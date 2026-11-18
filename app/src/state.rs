@@ -22,6 +22,10 @@ pub enum Msg {
     Done(Result<NestResult, String>),
     Outline(Result<BezPath, String>),
     Exported(Result<Vec<PathBuf>, String>),
+    /// A newer version was installed and runs from the next start.
+    Updated(String),
+    /// A newer version was found but couldn't be installed: version, reason.
+    UpdateFailed(String, String),
 }
 
 #[derive(Default)]
@@ -170,6 +174,8 @@ pub struct App {
     /// Result sheets whose offcut was already saved.
     pub saved_offcuts: Vec<usize>,
     pub drop_over: bool,
+    /// Version installed by the updater, waiting for a restart.
+    pub update_ready: Option<String>,
     pub notices: Vec<Notice>,
     pub next_notice: u64,
     pub now: f64,
@@ -246,6 +252,7 @@ impl App {
             bar: Default::default(),
             saved_offcuts: Vec::new(),
             drop_over: false,
+            update_ready: None,
             notices: Vec::new(),
             next_notice: 1,
             now: 0.0,
@@ -664,6 +671,15 @@ impl App {
             changed = true;
             match msg {
                 Msg::Imported { path, result } => self.on_imported(&path, result),
+                Msg::Updated(v) => {
+                    self.notify(format!("Updated to {v}"), Some("Restart Nesting to use it.".into()), false);
+                    self.update_ready = Some(v);
+                }
+                Msg::UpdateFailed(v, e) => self.notify(
+                    format!("Couldn't install version {v}"),
+                    Some(format!("{e}. Download it from github.com/hussainph/nesting/releases.")),
+                    true,
+                ),
                 Msg::Progress(r) => {
                     if self.run.is_some() {
                         let first = self.result.is_none();
