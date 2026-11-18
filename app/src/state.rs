@@ -181,8 +181,10 @@ pub struct App {
     pub now: f64,
 }
 
+/// The stock library file. Copies the library from the app's old name (Nesting) the first
+/// time, so renaming the app doesn't lose anyone's stock.
 pub fn library_path() -> PathBuf {
-    if let Ok(p) = std::env::var("NESTING_LIBRARY") {
+    if let Ok(p) = std::env::var("RAINBOWNEST_LIBRARY").or_else(|_| std::env::var("NESTING_LIBRARY")) {
         return PathBuf::from(p);
     }
     let base = if cfg!(windows) {
@@ -195,7 +197,12 @@ pub fn library_path() -> PathBuf {
             .or_else(|_| std::env::var("HOME").map(|h| PathBuf::from(h).join(".local/share")))
             .unwrap_or_else(|_| PathBuf::from("."))
     };
-    base.join("Nesting").join("library.json")
+    let path = base.join("RainbowNest").join("library.json");
+    let old = base.join("Nesting").join("library.json");
+    if !path.exists() && old.exists() && std::fs::create_dir_all(base.join("RainbowNest")).is_ok() {
+        let _ = std::fs::copy(&old, &path);
+    }
+    path
 }
 
 pub fn parse_pos(s: &str) -> Option<f64> {
@@ -672,7 +679,7 @@ impl App {
             match msg {
                 Msg::Imported { path, result } => self.on_imported(&path, result),
                 Msg::Updated(v) => {
-                    self.notify(format!("Updated to {v}"), Some("Restart Nesting to use it.".into()), false);
+                    self.notify(format!("Updated to {v}"), Some("Restart RainbowNest to use it.".into()), false);
                     self.update_ready = Some(v);
                 }
                 Msg::UpdateFailed(v, e) => self.notify(

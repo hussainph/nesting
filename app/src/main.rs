@@ -1,4 +1,4 @@
-//! Nesting: lay out laser and router parts on sheets and remnants.
+//! RainbowNest: lay out laser and router parts on sheets and remnants.
 
 // No console window behind the app in Windows release builds.
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
@@ -118,7 +118,7 @@ fn main() {
         setup: Some(setup),
         poll: Some(poll),
         on_key: Some(on_key),
-        ..AppSpec::new("Nesting", (1280.0, 820.0), App::new, view::view)
+        ..AppSpec::new("RainbowNest", (1280.0, 820.0), App::new, view::view)
     };
     rune::App::new(spec).titlebar(rune::Titlebar::new(view::TITLEBAR_H)).run();
 }

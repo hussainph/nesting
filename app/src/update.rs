@@ -1,11 +1,11 @@
 //! Keeps the Windows app current from the GitHub releases.
 //!
 //! At launch, and every few hours while the app is open, it looks up the latest release. If
-//! that release is newer, it downloads `Nesting.exe`, checks it against the release's
-//! `Nesting.exe.sha256`, and swaps it in for the running exe. The new version runs from the
+//! that release is newer, it downloads `RainbowNest.exe`, checks it against the
+//! release's `RainbowNest.exe.sha256`, and swaps it in for the running exe. The new version runs from the
 //! next start; the toolbar offers a restart.
 //!
-//! Runs only in Windows release builds. Set `NESTING_NO_UPDATE` to turn it off.
+//! Runs only in Windows release builds. Set `RAINBOWNEST_NO_UPDATE` to turn it off.
 
 use crate::state::{Bus, Msg};
 use anyhow::{Context, Result, bail};
@@ -15,13 +15,14 @@ use std::sync::Arc;
 use std::time::Duration;
 
 const REPO: &str = "hussainph/nesting";
-const ASSET: &str = "Nesting.exe";
+const ASSET: &str = "RainbowNest.exe";
 const CHECK_EVERY: Duration = Duration::from_secs(4 * 60 * 60);
 /// Larger downloads are refused (the exe is about 32 MB).
 const MAX_BYTES: u64 = 300 * 1024 * 1024;
 
 pub fn enabled() -> bool {
-    cfg!(all(windows, not(debug_assertions))) && std::env::var_os("NESTING_NO_UPDATE").is_none()
+    cfg!(all(windows, not(debug_assertions))) && std::env::var_os("RAINBOWNEST_NO_UPDATE").is_none()
+        && std::env::var_os("NESTING_NO_UPDATE").is_none()
 }
 
 pub fn start(bus: Arc<Bus>) {
@@ -61,7 +62,7 @@ pub fn restart() {
 fn agent() -> ureq::Agent {
     ureq::Agent::config_builder()
         .timeout_global(Some(Duration::from_secs(600)))
-        .user_agent(concat!("nesting/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("rainbownest/", env!("CARGO_PKG_VERSION")))
         .build()
         .into()
 }
@@ -98,9 +99,9 @@ fn install(tag: &str) -> Result<()> {
     let base = format!("https://github.com/{REPO}/releases/download/{tag}");
     let exe = fetch_verified(&base)?;
     let current = std::env::current_exe()?;
-    let staged = current.with_file_name(".Nesting-update.exe");
-    std::fs::write(&staged, &exe).context("Couldn't save the update next to Nesting.exe")?;
-    let replaced = self_replace::self_replace(&staged).context("Couldn't replace Nesting.exe");
+    let staged = current.with_file_name(".RainbowNest-update.exe");
+    std::fs::write(&staged, &exe).context("Couldn't save the update next to the app")?;
+    let replaced = self_replace::self_replace(&staged).context("Couldn't replace the app's exe");
     let _ = std::fs::remove_file(&staged);
     replaced
 }
@@ -144,11 +145,11 @@ mod tests {
     }
 
     /// Downloads a release's exe and checks it: `cargo test -p nest-app -- --ignored update`.
-    /// Set `NESTING_TEST_TAG` to pick the release.
+    /// Set `RAINBOWNEST_TEST_TAG` to pick the release (v0.1.3 or later).
     #[test]
     #[ignore]
     fn update_downloads_and_verifies() {
-        let tag = std::env::var("NESTING_TEST_TAG").unwrap_or_else(|_| "v0.1.1".into());
+        let tag = std::env::var("RAINBOWNEST_TEST_TAG").unwrap_or_else(|_| "v0.1.3".into());
         let exe = fetch_verified(&format!("https://github.com/{REPO}/releases/download/{tag}")).unwrap();
         assert!(exe.len() > 1_000_000, "{} bytes", exe.len());
     }

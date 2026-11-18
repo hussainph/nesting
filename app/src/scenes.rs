@@ -1,4 +1,4 @@
-//! Named states for headless snapshots (`nesting --snap out.png --scene result`).
+//! Named states for headless snapshots (`rainbownest --snap out.png --scene result`).
 
 use kurbo::{BezPath, Circle, Point, RoundedRect, Shape};
 use nest_core::library::Library;
@@ -169,7 +169,7 @@ fn select_sheet(s: &mut App) {
 fn update_ready(s: &mut App) {
     result(s);
     s.update_ready = Some("0.1.3".into());
-    s.notify("Updated to 0.1.3", Some("Restart Nesting to use it.".into()), false);
+    s.notify("Updated to 0.1.3", Some("Restart RainbowNest to use it.".into()), false);
 }
 
 fn running(s: &mut App) {

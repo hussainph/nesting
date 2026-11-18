@@ -1,18 +1,20 @@
-# Nesting
+# RainbowNest
 
-Lays out laser and router parts on sheets and remnants to use as little fresh material as possible.
+Rainboworld Factory's nesting app. It lays out laser and router parts on sheets and remnants to use as little fresh material as possible.
 
 ## Install on Windows
 
 Needs 64-bit Windows 10 or 11.
 
-1. Download [Nesting.exe](https://github.com/hussainph/nesting/releases/latest/download/Nesting.exe).
+1. Download [RainbowNest.exe](https://github.com/hussainph/nesting/releases/latest/download/RainbowNest.exe).
 2. Move it somewhere it can stay, like the Desktop, and double-click it. There's nothing else to install.
 3. The first time you open it, Windows may show "Windows protected your PC" because the app isn't signed. Click **More info**, then **Run anyway**.
 
-Nesting updates itself. It checks for a new version when it starts and every few hours after, and installs it in the background. **Restart to update** then appears in the toolbar. Copies older than 0.1.2 can't update themselves, so replace those with a fresh download once. Your stock library is kept either way.
+RainbowNest updates itself. It checks for a new version when it starts and every few hours after, and installs it in the background. **Restart to update** then appears in the toolbar. Copies older than 0.1.2 can't update themselves, so replace those with a fresh download once. Your stock library is kept either way.
 
-If an update can't be installed, usually because Nesting.exe sits in a folder Windows protects, like Program Files, the app says so. Keep it on the Desktop or in your own folder. To turn updates off on a machine, set the environment variable `NESTING_NO_UPDATE` to `1`.
+The app was called Nesting before 0.1.3. Copies that update from an older version keep the file name Nesting.exe; rename the file if you like, and fix any shortcut to it.
+
+If an update can't be installed, usually because the exe sits in a folder Windows protects, like Program Files, the app says so. Keep it on the Desktop or in your own folder. To turn updates off on a machine, set the environment variable `RAINBOWNEST_NO_UPDATE` to `1`.
 
 ## Run from source
 
@@ -53,11 +55,13 @@ Both kinds of .ai file import: current Illustrator files, and the older Illustra
 
 The stock library is a JSON file:
 
-- Windows: `%APPDATA%\Nesting\library.json`
-- macOS: `~/Library/Application Support/Nesting/library.json`
-- Linux: `~/.local/share/Nesting/library.json`
+- Windows: `%APPDATA%\RainbowNest\library.json`
+- macOS: `~/Library/Application Support/RainbowNest/library.json`
+- Linux: `~/.local/share/RainbowNest/library.json`
 
-Set `NESTING_LIBRARY` to a path on a shared folder so every machine sees the same stock.
+On first start, RainbowNest copies the library from the old `Nesting` folder if there is one.
+
+Set `RAINBOWNEST_LIBRARY` to a path on a shared folder so every machine sees the same stock.
 
 ## Command line
 
@@ -82,7 +86,7 @@ Rune is pre-release and pinned to one revision in `Cargo.toml`, along with the c
 ```sh
 cargo test --workspace
 cargo test -p nest-engine --release -- --ignored --nocapture bench   # engine benchmarks
-target/debug/nesting --snap out.png --scene result                   # headless screenshot
+target/debug/rainbownest --snap out.png --scene result               # headless screenshot
 ```
 
 Scenes: `empty`, `parts`, `result`, `running`, `select-part`, `select-sheet`, `update-ready`, `add-remnant`, `edit-remnant`, `arabic`, `engine`.
@@ -92,7 +96,7 @@ Scenes: `empty`, `parts`, `result`, `running`, `select-part`, `select-sheet`, `u
 1. Bump `version` in the root `Cargo.toml` and commit.
 2. Publish a release with a matching tag: `gh release create v0.2.0 --notes "..."`.
 
-CI builds `Nesting.exe` on Windows and attaches it to the release with its SHA-256 checksum, `Nesting.exe.sha256`. The download link above always points at the newest release, and running copies install it on their next check. The updater refuses a release without the checksum file, so publish releases through CI only.
+CI builds `RainbowNest.exe` on Windows and attaches it to the release with its SHA-256 checksum, `RainbowNest.exe.sha256`. It also attaches the same exe as `Nesting.exe`, which is what copies from before the rename (0.1.2) look for. The download link above always points at the newest release, and running copies install it on their next check. The updater refuses a release without the checksum file, so publish releases through CI only.
 
 ## Third-party code
 
