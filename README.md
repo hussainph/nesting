@@ -2,7 +2,17 @@
 
 Lays out laser and router parts on sheets and remnants to use as little fresh material as possible.
 
-## Run it
+## Install on Windows
+
+Needs 64-bit Windows 10 or 11.
+
+1. Download [Nesting.exe](https://github.com/hussainph/nesting/releases/latest/download/Nesting.exe).
+2. Move it somewhere it can stay, like the Desktop, and double-click it. There's nothing else to install.
+3. The first time you open it, Windows may show "Windows protected your PC" because the app isn't signed. Click **More info**, then **Run anyway**.
+
+To update, download Nesting.exe again and replace the old copy. Your stock library is kept.
+
+## Run from source
 
 ```sh
 cargo run --release -p nest-app        # the desktop app
@@ -74,3 +84,14 @@ target/debug/nesting --snap out.png --scene result                   # headless 
 ```
 
 Scenes: `empty`, `parts`, `result`, `running`, `select-part`, `select-sheet`, `add-remnant`, `edit-remnant`, `arabic`, `engine`.
+
+## Releasing
+
+1. Bump `version` in the root `Cargo.toml` and commit.
+2. Publish a release with a matching tag: `gh release create v0.2.0 --notes "..."`.
+
+CI builds `Nesting.exe` on Windows and attaches it to the release. The download link above always points at the newest release.
+
+## Third-party code
+
+`crates/nest-engine/src/sep.rs` is adapted from [sparrow](https://github.com/JeroenGar/sparrow), MIT License, copyright (c) 2025 Jeroen Gardeyn, KU Leuven. The full notice is at the top of that file. [jagua-rs](https://github.com/JeroenGar/jagua-rs) is used as a dependency under the MPL 2.0.
