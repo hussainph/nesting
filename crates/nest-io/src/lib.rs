@@ -8,6 +8,7 @@ mod assemble;
 mod dxf_in;
 mod export;
 mod pdf_in;
+mod ps_in;
 mod svg_in;
 
 use anyhow::{Context, Result, bail};
@@ -51,8 +52,8 @@ pub fn import_path(path: &Path) -> Result<ImportReport> {
     let raw = match ext.as_str() {
         "svg" | "svgz" => svg_in::read(&data),
         "dxf" => dxf_in::read(&data),
-        "ai" | "pdf" => pdf_in::read(&data),
-        _ => bail!("{file_name} isn't a supported file. Use SVG, DXF or AI."),
+        "ai" | "pdf" | "eps" => read_ai(&data),
+        _ => bail!("{file_name} isn't a supported file. Use AI, PDF, EPS, DXF or SVG."),
     }
     .with_context(|| format!("Couldn't read {file_name}"))?;
     Ok(finish(raw, &stem, &file_name))
@@ -66,9 +67,26 @@ pub fn import_dxf(data: &[u8]) -> Result<ImportReport> {
     Ok(finish(dxf_in::read(data)?, "Part", "the file"))
 }
 
-/// Reads Illustrator files saved with PDF compatibility, and plain PDFs.
+/// Reads Illustrator files (with or without PDF compatibility), Illustrator EPS, and PDFs.
 pub fn import_ai(data: &[u8]) -> Result<ImportReport> {
-    Ok(finish(pdf_in::read(data)?, "Part", "the file"))
+    Ok(finish(read_ai(data)?, "Part", "the file"))
+}
+
+fn read_ai(data: &[u8]) -> Result<RawImport> {
+    if pdf_in::is_pdf(data) {
+        pdf_in::read(data)
+    } else if ps_in::is_postscript(data) {
+        ps_in::read(data)
+    } else {
+        bail!("It isn't an Illustrator, EPS or PDF file.")
+    }
+}
+
+/// An error's causes after its first line, for showing under a heading that already says
+/// what failed: "Couldn't read a.ai" / "It isn't an Illustrator, EPS or PDF file."
+pub fn error_detail(e: &anyhow::Error) -> String {
+    let causes: Vec<String> = e.chain().skip(1).map(|c| c.to_string()).collect();
+    if causes.is_empty() { e.to_string() } else { causes.join(": ") }
 }
 
 /// Reads a remnant outline from a file: its largest closed contour, normalized.

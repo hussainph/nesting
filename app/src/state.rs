@@ -309,7 +309,7 @@ impl App {
             self.importing += 1;
             let bus = self.bus.clone();
             std::thread::spawn(move || {
-                let result = nest_io::import_path(&path).map_err(|e| e.to_string());
+                let result = nest_io::import_path(&path).map_err(|e| nest_io::error_detail(&e));
                 bus.send(Msg::Imported { path, result });
             });
         }

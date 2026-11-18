@@ -10,7 +10,7 @@ use crate::{board, editor, icons, sidebar};
 pub const IMPORT_EXTENSIONS: [&str; 5] = ["ai", "pdf", "dxf", "svg", "eps"];
 
 pub fn pick_files(_s: &mut App, tx: &mut Tx) {
-    let opts = FileDialogOptions { title: "Add parts".into(), ..Default::default() }.filter("Drawings", &["ai", "pdf", "dxf", "svg"]);
+    let opts = FileDialogOptions { title: "Add parts".into(), ..Default::default() }.filter("Drawings", &["ai", "eps", "pdf", "dxf", "svg"]);
     tx.open_file(opts, |s: &mut App, r, _tx| {
         if let Ok(Some(path)) = r {
             s.import_files(vec![path]);

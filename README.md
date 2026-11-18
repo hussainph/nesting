@@ -23,7 +23,7 @@ Rust 1.99.1 is pinned in `rust-toolchain.toml`. rustup installs it on first buil
 
 ## Using the app
 
-1. Add parts. Drop AI, PDF, DXF or SVG files on the window, or use **Add files**. Every closed outline becomes a part. Holes stay with their part, and the separate dots of Arabic letters become their own parts.
+1. Add parts. Drop AI, EPS, PDF, DXF or SVG files on the window, or use **Add files**. Every closed outline becomes a part. Holes stay with their part, and the separate dots of Arabic letters become their own parts.
 2. Set quantities in the parts list.
 3. Pick stock. Tick the sheets and remnants to use. Use **+** next to Stock to draw a new sheet or remnant on the canvas, or the pencil on a row to edit one. Click a sheet on the board to select it, then rotate it with the round handle, the bar's rotate buttons, or R and Shift+R. The nest fills each sheet from the left as it lies on the board.
 4. **Nest** (Ctrl+Enter). The best layout so far shows while it runs. **Stop** keeps it.
@@ -45,7 +45,7 @@ Pan with a two-finger scroll, a middle-button drag, or by dragging the empty boa
 
 ### AI files
 
-Illustrator files must be saved with **Create PDF Compatible File** checked (the default). Convert text to outlines before saving.
+Both kinds of .ai file import: current Illustrator files, and the older Illustrator 8 format that CorelDRAW writes when you export to AI. Illustrator .eps files work too. Text isn't imported, so convert it to outlines (curves in CorelDRAW) before saving.
 
 ### Shared stock
 

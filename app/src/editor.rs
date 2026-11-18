@@ -736,7 +736,7 @@ impl App {
     pub fn editor_import(&mut self, path: std::path::PathBuf) {
         let bus = self.bus.clone();
         std::thread::spawn(move || {
-            let r = nest_io::import_outline(&path).map_err(|e| e.to_string());
+            let r = nest_io::import_outline(&path).map_err(|e| nest_io::error_detail(&e));
             bus.send(crate::state::Msg::Outline(r));
         });
     }
@@ -989,7 +989,7 @@ pub fn panel(e: &Editor, k: &Kit) -> El {
         .variant(ButtonVariant::Ghost)
         .control_size(rune_kit::ControlSize::Regular)
         .on_press_tx(|_s: &mut App, tx: &mut Tx| {
-            let opts = rune::FileDialogOptions { title: "Import outline".into(), ..Default::default() }.filter("Drawings", &["dxf", "svg", "ai", "pdf"]);
+            let opts = rune::FileDialogOptions { title: "Import outline".into(), ..Default::default() }.filter("Drawings", &["dxf", "svg", "ai", "eps", "pdf"]);
             tx.open_file(opts, |s: &mut App, r, _tx| {
                 if let Ok(Some(path)) = r {
                     s.editor_import(path);

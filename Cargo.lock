@@ -2401,7 +2401,7 @@ dependencies = [
 
 [[package]]
 name = "nest-app"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "kurbo 0.13.1",
@@ -2415,7 +2415,7 @@ dependencies = [
 
 [[package]]
 name = "nest-cli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -2428,7 +2428,7 @@ dependencies = [
 
 [[package]]
 name = "nest-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "kurbo 0.13.1",
  "serde",
@@ -2438,7 +2438,7 @@ dependencies = [
 
 [[package]]
 name = "nest-engine"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "jagua-rs",
@@ -2455,7 +2455,7 @@ dependencies = [
 
 [[package]]
 name = "nest-io"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "dxf",

@@ -9,9 +9,9 @@ use clap::Parser;
 use nest_core::{NestJob, NestSettings, Part, Rotation, Stock, StockKind};
 
 #[derive(Parser)]
-#[command(name = "nest-cli", about = "Nest parts from AI, PDF, DXF or SVG files onto sheets and remnants.")]
+#[command(name = "nest-cli", about = "Nest parts from AI, EPS, PDF, DXF or SVG files onto sheets and remnants.")]
 struct Args {
-    /// Part files (.ai, .pdf, .dxf, .svg). Every closed outline becomes a part.
+    /// Part files (.ai, .eps, .pdf, .dxf, .svg). Every closed outline becomes a part.
     #[arg(required = true)]
     parts: Vec<PathBuf>,
     /// Copies of each part.

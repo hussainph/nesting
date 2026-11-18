@@ -10,14 +10,22 @@ use lopdf::{Dictionary, Document, Object, ObjectId};
 const MM_PER_PT: f64 = 25.4 / 72.0;
 const MAX_FORM_DEPTH: usize = 12;
 
-pub(crate) const NO_PDF_DATA: &str = "This .ai file was saved without PDF compatibility. Re-save it in Illustrator with “Create PDF Compatible File” checked.";
+/// Where the PDF header starts, if it's in the first 1 KB (some writers put bytes before it).
+fn pdf_start(data: &[u8]) -> Option<usize> {
+    data[..data.len().min(1024)].windows(5).position(|w| w == b"%PDF-")
+}
+
+pub(crate) fn is_pdf(data: &[u8]) -> bool {
+    pdf_start(data).is_some()
+}
 
 pub(crate) fn read(data: &[u8]) -> Result<RawImport> {
-    let head = &data[..data.len().min(1024)];
-    if !head.windows(5).any(|w| w == b"%PDF-") {
-        bail!(NO_PDF_DATA);
+    let Some(start) = pdf_start(data) else { bail!("It isn't a PDF file.") };
+    let doc = match Document::load_mem(data) {
+        Err(_) if start > 0 => Document::load_mem(&data[start..]),
+        r => r,
     }
-    let doc = Document::load_mem(data).context("The file couldn't be read as a PDF")?;
+    .context("The PDF data in it is damaged or uses a format this app can't read")?;
     let mut groups = Vec::new();
     let mut saw_text = false;
     let mut skipped_pages = 0;
@@ -413,8 +421,8 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn postscript_only_ai_is_rejected() {
-        let err = import_ai(b"%!PS-Adobe-3.0\n%%Creator: Adobe Illustrator(R) 8.0\n").unwrap_err();
-        assert!(err.to_string().contains("PDF compatibility"), "{err}");
+    fn unknown_data_is_rejected() {
+        let err = import_ai(b"hello").unwrap_err();
+        assert!(err.to_string().contains("isn't an Illustrator"), "{err}");
     }
 }
